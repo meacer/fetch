@@ -3086,6 +3086,112 @@ an <a>implementation-defined</a> value.
 </ol>
 </div>
 
+<h3 id=https-upgrades>HTTPS upgrades</h3>
+
+<div algorithm>
+
+<p>User agents may optionally upgrade requests with <a>potentially untrustworthy URL</a>s
+to attempt to fetch them over <a>potentially trustworthy URL</a>s. If an upgraded request
+fails with a network error, it is retried over the original URL.
+
+<p>The HTTPS Upgrades algorithm consists of Upgrade and Fallback algorithms, with the following
+steps:
+
+<h4>Upgrade algorithm</h4>
+
+<p>Given a request <var>request</var>, this algorithm will rewrite its URL if the request should be
+modified and loaded over <code>"https"</code>, via the following algorithm:
+
+<ol>
+  <li>
+    <p>If one or more of the following conditions are met, return without modifying request:
+    <ul>
+      <li><p><var>request</var> is not a navigation request whose destination is document</li>
+
+      <li><p><var>request</var>'s method is not `<code>GET</code>`</li>
+
+      <li><p><var>request</var>'s URL's scheme is not <code>"http"</code></li>
+
+      <li><p><var>request</var>'s URL's host is non-unique (i.e., contains a non-registrable or
+      non-assignable domain name such as .local or an IP address that falls in a range reserved for
+      non-publicly routable networks)</li>
+
+      <li><p>Optionally, <var>request</var>'s URL's host is exempted from upgrades by the user agent
+      </li>
+    </ul>
+  </li>
+
+  <li><p>If <var>request</var>'s <code>https-upgrade-fallback-url</code> is non-null, this is a
+  fallback request that shouldn't be upgraded again. Clear the <code>https-upgrade</code> and
+  <code>https-upgrade-fallback-url</code> flags and return <var>request</var>.</li>
+
+  <li><p>Otherwise, upgrade the request by setting the following fields:
+    <ul>
+      <li>Set <code>https-upgrade-fallback-url</code> to request's URL</li>
+      <li>Set <var>request</var>'s URL's scheme to <code>"https"</code></li>
+      <li>Set <code>https-upgrade</code> flag to true</li>
+    </ul>
+  </li>
+</ol>
+
+<h4>Fallback algorithm</h4>
+
+<p>Runs after the Upgrade algorithm. This algorithm determines whether the upgraded
+request completed without a network error. If not, it retries the request over <code>"http"</code>.
+
+<ol>
+  <li><p>If the <code>https-upgrade</code> flag is not set, return without modifying request.</li>
+
+  <li><p>Otherwise, this is an upgraded request. Let <var>upgradedResponse</var> be the result of
+  fetching the upgraded request.</li>
+
+  <li>
+    <p>If <var>upgradedResponse</var> is a network error, initiate a fallback http load by doing the
+    following:
+
+    <ul>
+      <li><p>Set <var>request</var>'s URL to the value of <var>request</var>'s
+        <code>https-upgrade-fallback-url</code> flag</li>
+
+      <li><p>Set response to the result of running <a>HTTP-redirect fetch</a> given fetchParams and
+        <var>upgradedResponse</var>.</li>
+    </ul>
+  </li>
+
+  <li><p>Otherwise, the upgrade was successful. Return <var>upgradedResponse</var>.</li>
+</ol>
+
+<p>
+Optionally, user agents may implement a fast-fallback option by canceling slow fetches on upgraded
+requests and quickly initiate a fallback http load. 
+
+</div>
+
+<h4>Examples</h4>
+
+<div id=example-https-upgrade-good-https class=example>
+ <p>
+ <code>a.com</code> serves both <code>http://a.com</code> and <code>https://a.com</code>.
+ An eligible request to <code>http://a.com</code> will be upgraded to <code>https://a.com</code>. 
+</div>
+
+<div id=example-https-upgrade-bad-https class=example>
+ <p>
+  <code>a.com</code> serves <code>http://a.com</code> but refuses connections on
+  <code>https://a.com</code>.
+  An eligible request to <code>http://a.com</code> will be upgraded to <code>https://a.com</code>,
+  but the fetch will fail.
+  A fallback request will be initiated to <code>http://a.com</code>.
+</div>
+
+<div id=example-https-upgrade-slow-https class=example>
+ <p>
+  Optional fast-fallback example: <code>a.com</code> serves <code>http://a.com</code> and loads very
+  slowly over <code>https://a.com</code>.
+  An eligible request to <code>http://a.com</code> will be upgraded to <code>https://a.com</code>.
+  If the upgraded request doesn't return a response for N seconds, the fetch will be canceled.
+  A fallback request will be initiated to <code>http://a.com</code>.
+</div>
 
 <h3 id=port-blocking>Port blocking</h3>
 
